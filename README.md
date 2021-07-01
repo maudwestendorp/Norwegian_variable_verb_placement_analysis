@@ -1,0 +1,2 @@
+# Norwegian_variable_verb_placement_analysis
+Analysis of variable verb placement elicited production experiment
