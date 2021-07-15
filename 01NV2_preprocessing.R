@@ -1,188 +1,131 @@
 ---
 ## Maud Westendorp
-## June 2021
+## June 2021, tidied and minor adjustments July 15
 ## Preprocessing script and descriptive stats/overview
 ---
-## Load in libraries:
+######### Setup/preprocessing ######### 
+# Load in libraries:
 library(tidyverse)
+library(lme4)
+library(afex)
 library(patchwork)
 
-## Load in data:
-no2 <- read_csv2("../data/NOexp2.csv")
+### Load in data:
+no2 <- read_csv2("../NOexp2.csv")
 
-## Check data:
-##### remove non-native speakers
+# Remove non-native speakers:
 no2 <- filter(no2, 
-              Mother.tongue %in% c("NORWEGIAN", "NORWEGIAN/SAMI", 
-                                   "NORWEGIAN/ENGLISH", "NORTHERN SAMI/NORWEGIAN", 
-                                   "NORWEGIAN/DARI"))
+               Mother.tongue %in% c("NORWEGIAN", "NORWEGIAN/SAMI", 
+                                    "NORWEGIAN/ENGLISH", "NORTHERN SAMI/NORWEGIAN", 
+                                    "NORWEGIAN/DARI"))
 
-no2 <- dplyr::select(no2, Informant, NordN, Maudnr, read1, exp, gruppe, UniqueNumb, type, Realization, Type_Element1, Type_Element2, Exact_category, Produced_Word_Order, Comment)
+# Selecting columns relevant for analysis:
+no2 <- dplyr::select(no2, Informant, NordN, 
+              Maudnr, read1, exp, gruppe, 
+              UniqueNumb, type, Realization,
+              Type_Element2, Exact_category, 
+              Produced_Word_Order, Comment)
 
+# Rename these columns for readability:
 no2 <- rename(no2,
-              Version = exp,
-              InformantGroup = gruppe,
-              Northern = NordN,
-              read = read1,
-              SentenceID = Maudnr,
-              Adverb = Type_Element2,
-              Reflexive = Type_Element1,
-              Subcondition = Exact_category,
-              WordOrder = Produced_Word_Order
-)
+                Version = exp,
+                InformantGroup = gruppe,
+                Northern = NordN,
+                SentenceID = Maudnr,
+                Adverb = Type_Element2,
+                Subcondition = Exact_category,
+                WordOrder = Produced_Word_Order,
+                Type = type,
+                Background.sentence = read1,
+                Response = Realization)
 
-#### fix error in Subcondition 
-no2$Subcondition[no2$UniqueNumb == "2403" & no2$SentenceID == "embobq"] <- NA
-no2$Subcondition[no2$UniqueNumb == "2505" & no2$SentenceID == "embobq"] <- NA
+# Reorder these columns for even more readability:
+no2 <- relocate(no2,
+               Informant, InformantGroup, Northern, 
+               Version, UniqueNumb, SentenceID, Type, 
+               Subcondition, Adverb, Background.sentence, 
+               Response, WordOrder, Comment)
 
+######### Setup different dataframes per experimental condition: #########
+# Create dataframe for Embedded V2-condition:
+ev2 <- no2 %>% filter(Subcondition %in% c("BridgeV", "EmbQ", "Non-BridgeV"),
+                      Type != "Read",
+                      !is.na(WordOrder))
 
-## Optional EV2: 
-#### dataframe for Embedded V2-condition
-ev2 <- dplyr::filter(no2, 
-                     Subcondition %in% c("BridgeV", "EmbQ", "Non-BridgeV"))
-ev2 <-  filter(ev2, type != "Read") %>% 
-  filter(!is.na(WordOrder))
+# Reorder for convenience:
+ev2$Subcondition <- factor(ev2$Subcondition, 
+                           levels = c("BridgeV", "Non-BridgeV", "EmbQ"))
+ev2$WordOrder <- factor(ev2$WordOrder, 
+                        levels = c("AV", "VA", "OTHER"))
+ev2$Adverb <- factor(ev2$Adverb, 
+                     levels = c("ikke", "aldri", "alltid", "ofte"))
 
-#### reorder for convenience
-ev2$Subcondition <- factor(ev2$Subcondition, levels = c("BridgeV", "Non-BridgeV", "EmbQ"))
-ev2$WordOrder <- factor(ev2$WordOrder, levels = c("AV", "VA", "OTHER"))
-ev2$Adverb <- factor(ev2$Adverb, levels = c("ikke", "aldri", "alltid", "ofte"))
+# Make WordOrderSimple column:
+ev2$WordOrderSimple <- "V3"
+ev2$WordOrderSimple[ev2$WordOrder == "VA"] <- "V2"
+ev2$WordOrderSimple[ev2$WordOrder == "OTHER"] <- "OTHER"
 
-#### per subcondition - get the numbers:
-count(ev2, Subcondition)
-ev2 %>% 
-  group_by(Subcondition) %>% 
-  count(WordOrder) %>% 
-  mutate(prop = n/sum(n),
-         prop = round(prop, digits = 3),
-         perc = prop * 100,
-         perc = str_c(perc, "%")) 
+# Filter for Embedded wh-questions condition:
+embwh <- filter(no2, 
+                Subcondition %in% c("EmbObQ", "EmbSubQ")) 
+embwh <- filter(embwh, Type != "Read")
 
-#### per clause type - calculate the percentages (and plot):
-ev2_clause <- ev2 %>% 
-  group_by(Subcondition) %>% 
-  count(WordOrder) %>% 
-  mutate(prop = n/sum(n),
-         prop = round(prop, digits = 3),
-         perc = prop * 100,
-         perc = str_c(perc, "%")) 
+# Reorder for convenience:
+embwh$Subcondition <- factor(embwh$Subcondition, levels = c("EmbSubQ", "EmbObQ"))
+embwh$WordOrder <- factor(embwh$WordOrder, levels = c("SV", "VS", "SOM", "NON", "CLEFT", "OTHER"))
 
-#### AFTER filtering out ambiguous items > per clause type - calculate the percentages:
-ev2_clause_clean <- ev2 %>%
-  filter(!SentenceID %in% c("ass.oft5", "fac.oft2", "int.oft1", "int.oft4")) %>%
-  group_by(Subcondition) %>%
-  count(WordOrder) %>%
-  mutate(prop = n/sum(n),
-         prop = round(prop, digits = 3),
-         perc = prop * 100,
-         perc = str_c(perc, "%"))
+# Filter for main clause adverbs condition:
+adv <- filter(no2,
+              Subcondition %in% c("V2adv", "V3adv"))
+adv <- filter(adv, Type != "Read")
 
-#### per adverb - get the numbers:
-ev2 %>% 
-  group_by(Adverb) %>% 
-  count(WordOrder) %>% 
-  mutate(prop = n/sum(n),
-         prop = round(prop, digits = 3),
-         perc = prop * 100,
-         perc = str_c(perc, "%")) 
+# Reorder for convenience:
+adv$WordOrder <- factor(adv$WordOrder, levels = c("VA", "AV", "OTHER", "ADV.FIRST"))
 
-#### per adverb - per clause type:
-adv_clause <- ev2 %>% 
-  group_by(Adverb, Subcondition) %>% 
-  count(WordOrder, .drop = FALSE) %>% 
-  mutate(prop = n/sum(n),
-         prop = round(prop, digits = 3),
-         perc = prop * 100,
-         perc = str_c(perc, "%")) %>% 
-  filter(WordOrder == "VA")
-
-adv_clause_clean <- ev2 %>% 
-  filter(!SentenceID %in% c("ass.oft5", "fac.oft2", "int.oft1", "int.oft4")) %>% # remove ambiguous
-  group_by(Adverb, Subcondition) %>% 
-  count(WordOrder, .drop = FALSE) %>% 
-  mutate(prop = n/sum(n),
-         prop = round(prop, digits = 3),
-         perc = prop * 100,
-         perc = str_c(perc, "%")) %>% 
-  filter(WordOrder == "VA") %>% 
-  filter(Adverb == "ofte") %>% 
-  mutate(Adverb = str_c(Adverb, "_adjusted"))
-
-advclause <- bind_rows(adv_clause, adv_clause_clean)
-
-adv_clause_p <-
-  ggplot(advclause, aes(x = factor(Subcondition), y = prop*100)) + 
-  geom_point(aes(color=Adverb), size = 3, alpha = 0.85) +
-  geom_line(aes(group = Adverb, linetype = Adverb, color=Adverb)) +
-  labs(x = "clause type", y = "percentage Verb > Adverb ") +
-  scale_linetype_manual(name = c("aldri", "alltid", "ikke", "ofte", "ofte_adjusted"),
-                        values=c("solid", "solid", "solid", "dotted", "solid"), 
-                        labels = c("aldri 'never'", "alltid 'always'", "ikke 'not'", "ofte (including ambiguous cases)", "ofte 'often' (unambiguous)")) +
-  guides(linetype = guide_legend(reverse = TRUE)) +
-  scale_color_manual(name = c("aldri", "alltid", "ikke", "ofte", "ofte_adjusted"),
-                     values=c("#FC4E07", "#E7B800", "#C3D7A4", "#00AFBB", "#00AFBB"), 
-                     labels = c("aldri 'never'", "alltid 'always'", "ikke 'not'", "ofte (including ambiguous cases)", "ofte 'often' (unambiguous)")) +
-  guides(color = guide_legend(reverse = TRUE)) +
-  scale_y_continuous(limits = c(-2,30), 
-                     breaks = c(0, 5, 10, 15, 20, 25)) +
-  scale_x_discrete(labels = c("assertive", "factive", "interrogative")) +
-  theme_minimal() +
-  theme(legend.title = element_blank(),
-        legend.text = element_text(size = 10))
-
-adv_clause_p
-
-#### Northern vs. non-Northern Norwegian
-ev2 %>% group_by(Northern) %>%
-  summarise(count = n_distinct(Informant))
-
-ev2_NN <- ev2 %>% 
-  filter(!SentenceID %in% c("ass.oft5", "fac.oft2", "int.oft1", "int.oft4")) %>% # remove ambiguous
-  group_by(Northern, Subcondition) %>% 
-  count(WordOrder) %>% 
-  mutate(prop = n/sum(n),
-         prop = round(prop, digits = 3),
-         perc = prop * 100,
-         perc = str_c(perc, "%")) %>% 
-  filter(WordOrder == "VA")
-
-ev2_NN 
-
-## Variable V2 in main clause wh-questions
-#### filter for condition
+# Filter for main clause wh-questions condition:
 mainwh <- filter(no2,
-                 Subcondition %in% c("ObjQshort", "SubQshort", "ObjQlong", "SubQlong"))
-mainwh <- filter(mainwh, type != "Read")
+              Subcondition %in% c("ObjQshort", "SubQshort", "ObjQlong", "SubQlong"))
+mainwh <- filter(mainwh, Type != "Read")
 
-#### reorder for convenience
+# Reorder for convenience:
 mainwh$Subcondition <- factor(mainwh$Subcondition, levels = c("ObjQshort", "ObjQlong", "SubQshort", "SubQlong"))
 mainwh$WordOrder <- factor(mainwh$WordOrder, levels = c("VS", "SV", "NON", "SOM", "CLEFT", "OTHER"))
+```
 
-#### get numbers for table
-count(mainwh, Subcondition)
+# Setup for comparing of elicitation modes:
+# Which informants did both the written (2) and the spoken experiment (3):
+inf2 <- no2 %>%  filter(Version == "2") %>%  distinct(Informant)
+inf3 <- no2 %>%  filter(Version == "3") %>%  distinct(Informant)
+inf23 <- inner_join(inf2, inf3) # participants who did both version 2 and 3
 
-mainwh %>% 
-  group_by(Subcondition) %>% 
-  count(WordOrder) %>% 
-  mutate(prop = n/sum(n),
-         prop = round(prop, digits = 3),
-         perc = prop * 100,
-         perc = str_c(perc, "%")) 
+# Filter main df to only participants who did both experiments:
+spokwrit <- filter(no2,
+                       Informant %in% inf23$Informant)
+spokwrit <- filter(spokwrit, Type != "Read") %>% 
+    filter(!is.na(WordOrder))
 
-#### make v2/v3
-mainwh$WordOrderSimple <- "V2"
-mainwh$WordOrderSimple[mainwh$WordOrder == "SOM"] <- "V3"
-mainwh$WordOrderSimple[mainwh$WordOrder == "SV"] <- "V3"
-mainwh$WordOrderSimple[mainwh$Comment == "V3 cleft"] <- "V3"
-mainwh$WordOrderSimple[mainwh$WordOrder == "OTHER"] <- "OTHER"
+# Subset dataframe to only wh-questions:
+spwr_wh <- filter(spokwrit,
+              Subcondition %in% c("ObjQshort", "SubQshort"))
 
-mainwh %>% 
-  group_by(Subcondition) %>% 
-  count(WordOrderSimple) %>% 
-  mutate(prop = n/sum(n),
-         prop = round(prop, digits = 3),
-         perc = prop * 100,
-         perc = str_c(perc, "%")) 
+# Mutate Word Orders to simpler terms:
+spwr_wh$WordOrderSimple <- "V2"
+spwr_wh$WordOrderSimple[spwr_wh$WordOrder == "SOM"] <- "V3"
+spwr_wh$WordOrderSimple[spwr_wh$WordOrder == "SV"] <- "V3"
+spwr_wh$WordOrderSimple[spwr_wh$Comment == "V3 cleft"] <- "V3"
+spwr_wh$WordOrderSimple[spwr_wh$WordOrder == "OTHER"] <- "OTHER"
 
-write.table(mainwh, 'mainwh.csv', sep = ',', row.names = F)
-write.table(mainwh, 'ev2.csv', sep = ',', row.names = F)
+# Subset data frame for only EV2 conditions:
+ev2_2 <- spokwrit %>%  
+          filter(Subcondition %in% c("BridgeV", "EmbQ", "Non-BridgeV"), 
+                 Type == "Produce") %>%  
+          distinct(SentenceID) %>% 
+          arrange(SentenceID)
+ev2_3 <- spokwrit %>%  
+          filter(Subcondition %in% c("BridgeV", "EmbQ", "Non-BridgeV"),
+                 Type == "Spoken") %>%
+          distinct(SentenceID) %>% 
+          arrange(SentenceID)
+ev2_23 <- inner_join(ev2_2, ev2_3) # EV2 items in both version 2 and 3
+
+rm(inf2, inf3, ev2_2, ev2_3)
