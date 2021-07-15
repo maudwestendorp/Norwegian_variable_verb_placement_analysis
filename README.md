@@ -23,10 +23,10 @@ no2-dataframe:
 - Version: version of the experiment (i.e., 1 - 3)
 - UniqueNumb: unique itemID (e.g., "2311", "2753")
 - SentenceID: new IDs for grouping together items with same verb/adverb combination in EV2-condition (e.g., "ass.oft1", "int.nev2")
-- Type: what for does the response have? 
-     "Read": read aloud sentences from text,
-     "Produce": transformed responses based on read-aloud text,
-     "Spoken": responses in spoken-mode experiment, after on spoken dialect elicitation
+- Type: what for does the response have?   
+     "Read": read aloud sentences from text,  
+     "Produce": transformed responses based on read-aloud text,  
+     "Spoken": responses in spoken-mode experiment, after on spoken dialect elicitation 
 - Subcondition: exact condition in the experiment (e.g., "ObjQshort", "BridgeV", "V3adv")
 - Adverb: adverb used in elicitation (i.e., "ikke", "aldri", "alltid", "ofte" or "none")
 - Background.sentence: background sentence in experiment (e.g., "Jeg setter meg ofte lengst bak i bussen.")
