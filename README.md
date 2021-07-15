@@ -17,17 +17,19 @@ July 1, 2021
 
 ## Code book:
 no2-dataframe:
-- "Informant": unique participant number
-- "SentenceID":
-- "UniqueNumb": itemID
-- "read": background sentence in experiment
-- "Version": version of the experiment (1-3)
-- "InformantGroup": groupID (A-D)
-- "Northern": is the participant from Northern-Norway or not?
-- "type": 
-- "Realization":
-- "Reflexive":
-- "Adverb":
-- "Subcondition":
-- "WordOrder":
-- "Comment": comments from annotator on production    
+- Informant: unique participant number (e.g., "T200", "KO04", "NOR002")
+- InformantGroup: groupID (i.e., A - D)
+- Northern: does the participant speak a Northern-Norwegian dialect? ("yes"/"no")
+- Version: version of the experiment (i.e., 1 - 3)
+- UniqueNumb: unique itemID (e.g., "2311", "2753")
+- SentenceID: new IDs for grouping together items with same verb/adverb combination in EV2-condition (e.g., "ass.oft1", "int.nev2")
+- Type: what for does the response have? 
+     "Read": read aloud sentences from text,
+     "Produce": transformed responses based on read-aloud text,
+     "Spoken": responses in spoken-mode experiment, after on spoken dialect elicitation
+- Subcondition: exact condition in the experiment (e.g., "ObjQshort", "BridgeV", "V3adv")
+- Adverb: adverb used in elicitation (i.e., "ikke", "aldri", "alltid", "ofte" or "none")
+- Background.sentence: background sentence in experiment (e.g., "Jeg setter meg ofte lengst bak i bussen.")
+- Response: exact response (e.g., "Han Ole sier at han sett sæ ofte lengst bak i bussen.")
+- WordOrder: word order in response (e.g., "VA": verb > adverb)
+- Comment: comments from annotator on responses
