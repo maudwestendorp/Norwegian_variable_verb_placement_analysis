@@ -1,132 +1,139 @@
 ---
 ## Maud Westendorp
-## June 2021
-## Mixed model analysis
+## July 2021
+## Mixed model analyses
 ---
+######### Embedded Verb Second #########
+# Make the adjusted WordOrderSimple a binary outcome by removing "other" responses and keeping only V2 and V3 orders:
+ev2 <- ev2 %>% 
+  mutate(WO_fac = factor(WordOrderSimple))
 
-## Load in libraries:
-library(tidyverse)
-library(lme4)
-library(afex)
-library(sommer)
-library(patchwork)
-
-## Load in data:
-ev2 <- read_csv2("../data/ev2.csv")
-mainwh <- read_csv2("../data/mainwh.csv")
-
-## Optional embedded V2
-#### make v2/v3
-ev2$WordOrderSimple <- "V3"
-ev2$WordOrderSimple[ev2$WordOrder == "VA"] <- "V2"
-ev2$WordOrderSimple[ev2$WordOrder == "OTHER"] <- "OTHER"
-
-#### prep
 ev2_stats <- ev2 %>% 
-  mutate(WO_fac = factor(WordOrderSimple)) %>% 
-  filter(WO_fac != "OTHER") %>%
-  mutate(Northern_fac = factor(Northern)) 
+            filter(WO_fac != "OTHER", Adverb !="ikke")
 
-ev2_stats_ofte <- ev2 %>% 
-  filter(Adverb == "ofte") %>% 
-  mutate(WO_fac = factor(WordOrderSimple)) %>% 
-  filter(WO_fac != "OTHER") %>%
-  mutate(Northern_fac = factor(Northern)) 
+ev2_stats$WO_fac <- droplevels(ev2_stats$WO_fac) %>% 
+  relevel(ev2_stats$WO_fac, ref = "V3")
 
-ev2_stats_clean <- ev2 %>%  # clean dataset has ambiguous sentences removed
-  filter(!SentenceID %in% c("ass.oft5", "fac.oft2", "int.oft1", "int.oft4")) %>% 
-  mutate(WO_fac = factor(WordOrderSimple)) %>% 
-  filter(WO_fac != "OTHER") %>%
-  mutate(Northern_fac = factor(Northern)) 
+# Are the levels correct?
+levels(ev2_stats$WO_fac)
 
-ev2_stats$WO_fac <- droplevels(ev2_stats$WO_fac)
-ev2_stats_clean$WO_fac <- droplevels(ev2_stats_clean$WO_fac)
+# Additional tibble for modeling without potentially ambiguous items (with adverb ofte), "ikke" removed because it is not used across all clause types:
+ev2_stats_clean <- ev2_stats %>%  
+            filter(!SentenceID %in% 
+                     c("ass.oft5", "fac.oft2", "int.oft1", "int.oft4"),
+                   Adverb != "ikke")
 
-ev2_stats$WO_fac <- relevel(ev2_stats$WO_fac, ref = "V3")
-ev2_stats_clean$WO_fac <- relevel(ev2_stats_clean$WO_fac, ref = "V3")
-
-### Adverb model (categorical effect) and comparison with null model using afex package
-ev2_adv_mdl <- glmer(WO_fac ~ Adverb + 
-                       (1|Informant) + (1|UniqueNumb), 
+# Models for testing effect of Adverb on word order:
+# First with complete dataset:
+ev2.adv_mdl <- glmer(WO_fac ~ Adverb + 
+                       (Adverb|Informant) + (1|UniqueNumb), 
                      data = ev2_stats, 
-                     family = binomial,
-                     control = glmerControl(optimizer = 'bobyqa'))
+                     family = binomial, 
+                     control = glmerControl(optimizer="bobyqa"))
 
-ev2_adv_clean_mdl <- glmer(WO_fac ~ Adverb + 
-                             (1|Informant) + (1|UniqueNumb), 
-                           data = ev2_stats_clean, 
-                           family = binomial, 
-                           control=glmerControl(optimizer="bobyqa"))
+# Check the results of modeling (Word order ~ Adverb):
+summary(ev2.adv_mdl)
+fixef(ev2.adv_mdl) %>% round(digits = 2)
 
-ev2_adv_afex <- mixed(WO_fac ~ 1 + Adverb + 
-                        (1|Informant) + (1|UniqueNumb), 
-                      data = ev2_stats, 
-                      family = binomial,
-                      method = "LRT")
+# Then make models with cleaned dataset (removed potentially ambiguous items):
+ev2.adv.clean_mdl <- glmer(WO_fac ~ Adverb + 
+                       (Adverb|Informant) + (1|UniqueNumb), 
+                     data = ev2_stats_clean, 
+                     family = binomial, 
+                     control = glmerControl(optimizer="bobyqa"))
 
-ev2_adv_clean_afex <- mixed(WO_fac ~ 1 + Adverb + 
-                              (1|Informant) + (1|UniqueNumb), 
-                            data = ev2_stats_clean, 
-                            family = binomial,
-                            method = "LRT")
+# Have a look at the fixed and random effects:
+summary(ev2.adv.clean_mdl)
 
-#### Calculate predictions
-fixef(ev2_adv_clean_mdl)
-plogis(fixef(ev2_adv_clean_mdl)[1]) %>% round(3) # probability V2 with ikke
-plogis(fixef(ev2_adv_clean_mdl)[1] + fixef(ev2_adv_clean_mdl)[2]) %>% round(3) # probability V2 with aldri
-plogis(fixef(ev2_adv_clean_mdl)[1] + fixef(ev2_adv_clean_mdl)[3]) %>% round(3) # probability V2 with alltid
-plogis(fixef(ev2_adv_clean_mdl)[1] + fixef(ev2_adv_clean_mdl)[4]) %>% round(3) # probability V2 with ofte
+# Extract coefficients for clean models:
+fixef(ev2.adv.clean_mdl)
+plogis(fixef(ev2.adv.clean_mdl)[1]) %>% round(3) # probability V2 with aldri
+plogis(fixef(ev2.adv.clean_mdl)[1] + fixef(ev2.adv.clean_mdl)[2] * 1 ) %>% round(3) # probability V2 with alltid
+plogis(fixef(ev2.adv.clean_mdl)[1] + fixef(ev2.adv.clean_mdl)[3] * 1 ) %>% round(3) # probability V2 with ofte
 
+# Compare models, create null-comparison models first, then compare with anova:
+ev2.adv_null.mdl <- glmer(WO_fac ~ 1 + 
+                       (Adverb|Informant) + (1|UniqueNumb), 
+                     data = ev2_stats, 
+                     family = binomial, 
+                     control = glmerControl(optimizer="bobyqa"))
 
-#### Clause type model (categorical effect) and comparison with null model using afex package
-ev2_clause_mdl <- glmer(WO_fac ~ Subcondition +
-                          (1|Informant) + (1|UniqueNumb) + (1|Adverb), 
-                        data = ev2_stats_clean,
-                        family = binomial, 
-                        control=glmerControl(optimizer="bobyqa"))
+ev2.adv.clean_null.mdl <- glmer(WO_fac ~ 1 + 
+                       (Adverb|Informant) + (1|UniqueNumb), 
+                     data = ev2_stats_clean, 
+                     family = binomial, 
+                     control = glmerControl(optimizer="bobyqa"))
 
-ev2_clause_afex <- mixed(WO_fac ~ 1 + Subcondition + 
-                           (1|Informant) + (1|UniqueNumb) + (1|Adverb), 
-                         data = ev2_stats_clean, 
-                         family = binomial,
-                         method = "LRT")
+# Comparing models:
+anova(ev2.adv_null.mdl, ev2.adv_mdl, test = "Chisq")
+anova(ev2.adv.clean_null.mdl, ev2.adv.clean_mdl, test = "Chisq")
 
-### Northern vs. non-Northern Norwegian model (categorical effect) and comparison with null model using afex package
-ev2_region_afex <- mixed(WO_fac ~ 1 + Northern_fac + 
-                           (1|Informant) + (1|UniqueNumb) + (1|Subcondition), 
-                         data = ev2_stats_clean, 
-                         family = binomial,
-                         method = "LRT")
+# Models for testing effect of Clause type on word order:
+ev2_stats_clause <- ev2 %>% 
+            filter(WO_fac != "OTHER", !SentenceID %in% 
+                     c("ass.oft5", "fac.oft2", "int.oft1", "int.oft4"))
 
-## Optional V2 in main clause wh-questions
-### effects dialect group (Northern Norwegian or not) on V2-V3
-mainwh %>% group_by(Northern) %>%
-  summarise(count = n_distinct(Informant))
+ev2.clause_mdl <- glmer(WO_fac ~ Subcondition + 
+                           (Subcondition|Informant) + (1|UniqueNumb),
+                           data = ev2_stats_clause, 
+                           family = binomial,
+                           control = glmerControl(optimizer="bobyqa"))
 
-mainwh %>% group_by(Northern) %>% 
-  count(WordOrderSimple) %>% 
-  mutate(prop = n/sum(n),
-         prop = round(prop, digits = 3),
-         perc = prop * 100,
-         perc = str_c(perc, "%")) 
+ev2.clause_null.mdl <- glmer(WO_fac ~ 1 + 
+                           (Subcondition|Informant) + (1|UniqueNumb),
+                           data = ev2_stats_clause, 
+                           family = binomial,
+                           control = glmerControl(optimizer="bobyqa"))
 
-mainwh <- mainwh %>% mutate(WO_fac = factor(WordOrderSimple)) %>% 
-  filter(WO_fac != "OTHER") %>%
-  mutate(Northern_fac = factor(Northern)) 
+anova(ev2.clause_null.mdl, ev2.clause_mdl, test = "Chisq")
 
-mainwh_mdl <- glmer(WO_fac ~ 1 + Northern_fac +
-                      (1|Informant) + (1|UniqueNumb) + (1|Subcondition), 
-                    data = mainwh, 
+# Check the results of the modeling (Word order ~ Clause type):
+summary(ev2.clause_mdl)
+fixef(ev2.clause_mdl) %>% round(digits = 2)
+
+# Models for testing effect of experiment version and dialect background (Northern-Norwegian or not) on word order:
+ev2.version_afex <- mixed(WO_fac ~ Version + 
+                    (1|Informant) + (1|UniqueNumb),
+                    data = ev2_stats, 
                     family = binomial,
-                    control=glmerControl(optimizer="bobyqa"))
+                    method = "LRT")
 
-mainwh_mdl_null <- glmer(WO_fac ~ 1 +
-                           (1|Informant) + (1|UniqueNumb) + (1|Subcondition), 
-                         data = mainwh, 
-                         family = binomial,
-                         control=glmerControl(optimizer="bobyqa"))
+ev2.region_afex <- mixed(WO_fac ~ Northern + 
+                    (1|Informant) + (1|UniqueNumb),
+                    data = ev2_stats, 
+                    family = binomial,
+                    method = "LRT")
 
-anova(mainwh_mdl_null, mainwh_mdl, test = 'Chisq')
+# Check the results for modeling (Word order ~ Northern Norwegian dialect):
+ev2.version_afex
+ev2.region_afex
+
+######### Main clause wh-questions #########
+# Convert Word Order to factor for modeling and drop "other" (non-target) responses to ensure binary outcome variable:
+mainwh_stats <- mainwh %>% 
+            mutate(WO_fac = factor(WordOrderSimple)) %>% 
+            mutate(Northern_fac = factor(Northern)) %>% 
+            filter(WO_fac != "OTHER")
+
+mainwh_stats$WO_fac <- droplevels(mainwh_stats$WO_fac)
+levels(mainwh_stats$WO_fac)
+
+# Models for testing effect of Dialect region on word order:
+mainwh_mdl <- glmer(WO_fac ~ Northern +
+                        (1|Informant) + (1|UniqueNumb) + (1|Subcondition), 
+                        data = mainwh_stats, 
+                        family = binomial)
+
+region_afex <- mixed(WO_fac ~ 1 + Northern + 
+                    (1|Informant) + (1|UniqueNumb) + (1|Subcondition), 
+                    data = mainwh_stats, 
+                    family = binomial,
+                    method = "LRT") 
+
+# Examine models and extract coefficients:
+summary(mainwh_mdl)
+region_afex
+fixef(mainwh_mdl)
 
 plogis(fixef(mainwh_mdl)[1] + fixef(mainwh_mdl)[2] * 0) %>% round(3) # probability V3 word order for non-Northern
 plogis(fixef(mainwh_mdl)[1] + fixef(mainwh_mdl)[2] * 1) %>% round(3)  # probability V3 word order for Northern
