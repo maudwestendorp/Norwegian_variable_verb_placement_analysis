@@ -14,3 +14,20 @@ July 1, 2021
 ### Data files:
 
 - NO2.csv
+
+## Code book:
+no2-dataframe:
+- "Informant": unique participant number
+- "SentenceID":
+- "UniqueNumb": itemID
+- "read": background sentence in experiment
+- "Version": version of the experiment (1-3)
+- "InformantGroup": groupID (A-D)
+- "Northern": is the participant from Northern-Norway or not?
+- "type": 
+- "Realization":
+- "Reflexive":
+- "Adverb":
+- "Subcondition":
+- "WordOrder":
+- "Comment": comments from annotator on production    
