@@ -3,6 +3,7 @@
 ## July 2021
 ## Mixed model analyses
 ---
+
 ######### Embedded Verb Second #########
 # Make the adjusted WordOrderSimple a binary outcome by removing "other" responses and keeping only V2 and V3 orders:
 ev2 <- ev2 %>% 
