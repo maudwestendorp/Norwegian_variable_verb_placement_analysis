@@ -6,6 +6,13 @@ July 1, 2021
 
 - Maud Westendorp, UiT The Arctic University of Norway
 
+### About the project:
+This repo contains analysis and data files associated with the following publication:
+Maud Westendorp. 2021. "[Variable verb second in Norwegian main and embedded clauses](https://doi.org/10.5617/nals.9423)". *Nordic Atlas of Language Structures (NALS) Journal*
+6(1): 1–48.
+
+It is part of the project "[Nordic Word Order Database](https://tekstlab.uio.no/nwd)". [A repo for the larger project](https://github.com/maudwestendorp/NWD) is also on this Github.
+
 ### Analysis files:
 
 - 01NV2_preprocessing
